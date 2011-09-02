@@ -25,6 +25,9 @@
 # $log$
 #  2010-08-12 espen
 #    Finally added proper support for munin 1.4.
+#  2010-09-14 ingvar
+#    Added support for sublevel munin data, ie. munin.linpro.no
+#    (Only munin-1.4 for now)
 #
 #
 # Schedule to run in crontab, i.e. once pr. hour:
@@ -238,9 +241,26 @@ sub parse_urls{
           }
   	}
       } elsif ($munin_version == "1.4"){
+        my $group;
+        my $host;
+        my $found=0;
+        my $sublevel=0;
+
         if($line =~ m/\s*<li><span class=\"host\"><a href=\"(.*)\/([^\/]+)\/index.html.*$/){
-          my $group=$1;
-          my $host=$2;
+          $group=$1;
+          $host=$2;
+          $found=1;
+        }
+
+        # Support for sublevel munin data
+        elsif ($line =~ m/\s*<li><span class=\"host\"><a href=\"([^\/]+)\/index.html.*$/){
+           $group=$domain;
+           $host=$1;
+           $sublevel=1;
+           $found=1;
+        }
+
+        if ( $found ) {
   
           $debug && print "  Group:         " . $group . "\n";
           $debug && print "  Hostname:      " . $host . "\n";
@@ -253,7 +273,14 @@ sub parse_urls{
           $debug && print "\n";
   
           foreach my $graph_type (@graph_types) {
-            my $graph_dir=$url . "/" . $group . "/" . $host . "/";
+            my $graph_dir;
+            
+            if ( $sublevel ) {
+                $graph_dir=$url . "/" . $host . "/";
+            }
+            else {
+                $graph_dir=$url . "/" . $group . "/" . $host . "/";
+            }
    
             my $graph_file=$plugin . "-" . $graph_type . ".png";
 
